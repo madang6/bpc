@@ -1,0 +1,87 @@
+{
+  "experiment": {
+    "name": "robosuite-sdp-three-task__pi05-lora-1000demo-30k",
+    "output_dir": "/home/admin/StanfordMSL/dpc-nldl-pi05-raw/experiments"
+  },
+  "runtime": {
+    "image": "dpc-nldl-robosuite-pi05:latest",
+    "gpus": "all",
+    "data_workers": ["coruscant.stanford.edu=0", "coruscant.stanford.edu=1", "coruscant.stanford.edu=3"],
+    "workers": ["coruscant.stanford.edu=0", "coruscant.stanford.edu=1", "coruscant.stanford.edu=3"],
+    "fit_workers": ["coruscant.stanford.edu=3", "coruscant.stanford.edu=3"],
+    "worker_roots": {
+      "coruscant.stanford.edu": "/scratch/madang/pi05-lora/runs"
+    },
+    "native_python": "/scratch/madang/pi05-lora/venv/bin/python",
+    "openpi_root": "/scratch/madang/pi05-lora/openpi",
+    "openpi_data_home": "/scratch/madang/pi05-lora/cache/openpi",
+    "wandb_api_key_file": "/scratch/madang/pi05-lora/wandb-api-key",
+    "native_env": {
+      "PYTHONPATH": "{project}/src:/scratch/madang/pi05-lora/openpi/src:/scratch/madang/pi05-lora/deps",
+      "XDG_CACHE_HOME": "/scratch/madang/pi05-lora/cache/xdg",
+      "HF_HOME": "/scratch/madang/pi05-lora/cache/huggingface",
+      "JAX_COMPILATION_CACHE_DIR": "/scratch/madang/pi05-lora/cache/jax",
+      "TMPDIR": "/scratch/madang/pi05-lora/tmp",
+      "WANDB_DIR": "/scratch/madang/pi05-lora/wandb",
+      "WANDB_CACHE_DIR": "/scratch/madang/pi05-lora/cache/wandb",
+      "WANDB_CONFIG_DIR": "/scratch/madang/pi05-lora/cache/wandb-config",
+      "WANDB_RUN_GROUP": "robosuite-pi05-lora-1000demo-30k",
+      "MUJOCO_GL": "egl",
+      "PYOPENGL_PLATFORM": "egl",
+      "HF_HUB_OFFLINE": "1",
+      "XLA_PYTHON_CLIENT_PREALLOCATE": "false"
+    },
+    "shm_size": "8g",
+    "mujoco_gl": "egl",
+    "timezone": "America/Los_Angeles",
+    "readonly_data_root": "/media/admin/data"
+  },
+  "benchmarks": [{
+    "kind": "robosuite",
+    "dataset_dir": "/media/admin/data/StanfordMSL/dpc-tests/robosuite",
+    "tasks": [
+      {"name": "square_d0", "data": {"prompt": "fit the square nut onto the square peg"}},
+      {"name": "stack_d0", "data": {"prompt": "stack the red block on the green block"}},
+      {"name": "threading_d0", "data": {"prompt": "thread the needle through the tripod ring"}}
+    ]
+  }],
+  "data": {
+    "demonstrations": 1000,
+    "cameras": ["agentview_rgb", "eye_in_hand_rgb"],
+    "image_size": 224,
+    "pi05": {
+      "checkpoint": "/media/admin/data/StanfordMSL/dpc-nldl/checkpoints/openpi/openpi-assets/checkpoints/pi05_base",
+      "tokenizer": "/media/admin/data/StanfordMSL/dpc-nldl/checkpoints/openpi/big_vision/paligemma_tokenizer.model"
+    }
+  },
+  "policy": {
+    "name": "pi05_lora",
+    "image_keys": ["base_0_rgb", "left_wrist_0_rgb"],
+    "action_horizon": 10,
+    "flow_steps": 10,
+    "replan_steps": 5,
+    "training": {
+      "batch_size": 32,
+      "steps": 30000,
+      "seed": 42,
+      "workers": 2,
+      "save_interval": 1000,
+      "wandb_project": "dpc-nldl-pi05-lora"
+    }
+  },
+  "methods": ["pi05_lora"],
+  "evaluation": {
+    "reset_protocol": "independent_seed",
+    "init_index_start": 0,
+    "init_index_stop": 300,
+    "episode_seed": 100000,
+    "controller_steps": 600,
+    "run_full_horizon_after_success": false,
+    "action_clip": [-1.0, 1.0],
+    "save_compact_trace": true
+  },
+  "analysis": {
+    "confidence": 0.95,
+    "reference_method": "pi05_lora"
+  }
+}

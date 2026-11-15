@@ -1,0 +1,24 @@
+{
+  "extends": "robosuite_common.json",
+  "methods": {
+    "gip_lda": {
+      "base": "gip_direct",
+      "g_lookup": "lda",
+      "recovery": false,
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "gip_lda"
+  },
+  "experiment": {
+    "fit_cache_name": "fisher-radius-sparsemax-full-standard-v1"
+  },
+  "method": {
+    "g": {
+      "lda": {
+        "fit_all_histories": true
+      }
+    }
+  }
+}

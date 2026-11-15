@@ -1,0 +1,23 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__action_ridge-r3m",
+    "fit_cache_name": "action_ridge-manuscript-v1"
+  },
+  "methods": {
+    "gip_action_ridge": {
+      "base": "gip_direct",
+      "g_lookup": "action_ridge",
+      "recovery": true,
+      "retrieval_precision": "fp64"
+    }
+  },
+  "analysis": {
+    "reference_method": "gip_action_ridge"
+  },
+  "method": {
+    "residual": {
+      "target_retrieval_precision": "fp64"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__nnc-r3m",
+    "fit_cache_name": "nnc-manuscript-v1"
+  },
+  "methods": {
+    "gip_nnc": {
+      "base": "deepc_g_direct",
+      "g_lookup": "lda",
+      "recovery": true,
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "gip_nnc"
+  }
+}

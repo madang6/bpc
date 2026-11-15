@@ -1,0 +1,33 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__nlr-r3m",
+    "fit_cache_name": "nlr-manuscript-v1"
+  },
+  "methods": {
+    "gip_nlr": {
+      "base": "gip_direct",
+      "g_lookup": "past",
+      "recovery": true,
+      "retrieval_precision": "fp64"
+    }
+  },
+  "analysis": {
+    "reference_method": "gip_nlr"
+  },
+  "method": {
+    "residual": {
+      "target_retrieval_precision": "fp64",
+      "action_source": "native"
+    },
+    "g": {
+      "lookup_rates": [
+        1
+      ],
+      "align_history": false,
+      "align_future": false,
+      "rate_scaled_action_dims": [],
+      "temporal_support_screen": false
+    }
+  }
+}

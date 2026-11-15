@@ -1,0 +1,19 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__nhc-r3m",
+    "fit_cache_name": "nhc-manuscript-v1"
+  },
+  "methods": {
+    "gip_nhc": {
+      "base": "gip_direct",
+      "g_lookup": "lda",
+      "g_weights": "uniform",
+      "recovery": true,
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "gip_nhc"
+  }
+}
