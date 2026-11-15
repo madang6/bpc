@@ -58,8 +58,7 @@ class DistributedFitTest(unittest.TestCase):
         jobs = RUNNER._jobs(config)
         self.assertEqual(len(jobs), 8)
         for scoped, _, _ in jobs:
-            self.assertFalse(scoped["methods"]["gip_lda"]["recovery"])
-            self.assertTrue(scoped["method"]["g"]["lda"]["fit_all_histories"])
+            self.assertTrue(scoped["methods"]["gip_lda"]["recovery"])
             self.assertEqual(scoped["method"]["g"]["lda"]["teacher"], "sparsemax")
             self.assertEqual(scoped["method"]["g"]["lookup_rates"], [.5, .75, 1, 1.5, 2])
             self.assertEqual(scoped["data"]["demonstrations"], 1000)

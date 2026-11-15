@@ -5,8 +5,8 @@ python3 scripts/run_experiment.py configs/robosuite_fisher_sparsemax_local.json 
 ```
 
 The headline entrypoint inherits shared settings from `robosuite_common.json`.
-Its default configuration uses the full-data recovery-free update: arm plus
-binary gripper supervision, 16,384 retrieval RFFs, all eligible fitting histories,
+Its resolved configuration preserves the `48bc022` sparsemax recipe: arm plus
+binary gripper supervision, 16,384 retrieval RFFs, up to 8,192 fitting anchors,
 Fisher rank 70, individual-history candidates, query-density normalization,
 teacher-coverage calibration, and adaptive sparsemax support. Compact rollout
 traces remain disabled to match the recorded campaign.
@@ -23,15 +23,11 @@ bounds GPU memory to one class block while preserving the covariance reductions.
 Only the radius-normalized sparsemax Fisher construction is selectable.
 
 The recipe retains exact affine continuation and the shared-support RFF
-correction, temporal retiming, coverage calibration, and
+correction, temporal retiming, empty-grasp recovery, coverage calibration, and
 existing execution accelerations. See the [README](../README.md) for their
 scope and the manuscript ablation entrypoints.
 
-See [the new default and matched results](recovery_free_default.md). The legacy
-capped-fit recovery-on config is preserved explicitly as
-`robosuite_fisher_sparsemax_capped_recovery_legacy.json`.
-
-## Historical capped-fit recovery-on results
+## Recorded results
 
 The completed local/Endor campaign ran source `0c8975d`, with simulator image,
 original configuration, per-task policy/bank hashes, and paired outcomes
@@ -58,7 +54,8 @@ radius teacher's projection, calibration, selected columns, distances, and
 reconstruction outputs. Those checks validate the tested fixtures, not another
 full-bank campaign.
 
-These historical results do not measure the new full-data default.
+The present cleanup retains the active recipe while removing inactive research
+choices. No fresh success rate is claimed for `dev-final-consolidated`.
 
 Historical execution studies remain in Git history at
 `2cb8291:docs/execution.md`, alongside the standalone development tools.

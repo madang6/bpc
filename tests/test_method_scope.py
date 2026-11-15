@@ -74,7 +74,7 @@ class MethodScopeTests(unittest.TestCase):
             with self.subTest(encoder=name):
                 config = deepcopy(self.config)
                 config['data'].update(encoder=name, feature_keys=[])
-                with self.assertRaisesRegex(ValueError, 'BPC visual encoder must be r3m'):
+                with self.assertRaisesRegex(ValueError, 'BPC encoder must be r3m or dp3_pointnet'):
                     _validate_methods(config, None)
                 with self.assertRaisesRegex(ValueError, 'visual encoder'):
                     encoder_spec(config['data'])

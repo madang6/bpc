@@ -4,21 +4,11 @@
     "gip_lda": {
       "base": "gip_direct",
       "g_lookup": "lda",
-      "recovery": false,
+      "recovery": true,
       "retrieval_precision": "mixed"
     }
   },
   "analysis": {
     "reference_method": "gip_lda"
-  },
-  "experiment": {
-    "fit_cache_name": "fisher-radius-sparsemax-full-standard-v1"
-  },
-  "method": {
-    "g": {
-      "lda": {
-        "fit_all_histories": true
-      }
-    }
   }
 }

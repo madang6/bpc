@@ -74,7 +74,7 @@ class ConfigInheritanceTest(unittest.TestCase):
 
     def test_every_experiment_config_can_report_completed_episodes(self):
         for path in sorted((ROOT/'configs').glob('*.json')):
-            if path.stem == 'robosuite_common':
+            if path.stem in {'bpc_common', 'robosuite_common', 'dexterous_common', 'pointnet_train'}:
                 continue
             with self.subTest(config=path.name), TemporaryDirectory() as folder:
                 config, run, _ = task_configs(load_config(path), folder)[0]
@@ -89,7 +89,7 @@ class ConfigInheritanceTest(unittest.TestCase):
                     self.assertEqual(score['success_rate'], 2/3)
 
     def test_sparsemax_recipe_matches_all_eight_recorded_fit_and_eval_specs(self):
-        config=load_config(ROOT/'configs/robosuite_fisher_sparsemax_capped_recovery_legacy.json')
+        config=load_config(ROOT/'configs/robosuite_fisher_sparsemax_local.json')
         baseline=load_config(ROOT/'configs/robosuite_nhc_local.json')
         evidence=read_config(ROOT/'docs/fisher_sparsemax_evaluation.json')
         archived=evidence['config']

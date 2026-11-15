@@ -142,12 +142,15 @@ class TemporalFutureTest(unittest.TestCase):
                          _target_key(expanded, expanded['method']))
         for section, key, value in [('g', 'align_history', False),
                                     ('g', 'align_future', False),
-                                    ('g', 'rate_scaled_action_dims', []),
                                     ('residual', 'action_source', 'native')]:
             invalid = copy.deepcopy(config)
             invalid['method'][section][key] = value
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'superseded'):
                 fit_groups(invalid)
+        actuator = copy.deepcopy(config)
+        actuator['method']['g']['rate_scaled_action_dims'] = []
+        self.assertEqual(temporal_method(actuator['method'])['g']['rate_scaled_action_dims'], [])
+        self.assertNotEqual(fit_groups(config)[0]['key'], fit_groups(actuator)[0]['key'])
 
     @cuda
     def test_cuda_temporal_readout_matches_cpu(self):

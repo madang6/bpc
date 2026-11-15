@@ -126,6 +126,9 @@ def _rollout(config, policy, trajectories, encode, initial_state,
     clip_low, clip_high = map(float, evaluation["action_clip"])
     warmup_steps = int(evaluation["warmup_steps"])
     controller_steps = int(evaluation["controller_steps"])
+    native = evaluation.get("benchmark") in {"adroit", "dexart"}
+    done = final_success = terminated = truncated = False
+    total_reward, success_steps, warmup_completed = 0.0, 0, 0
     with _episode(config, initial_state, episode_seed, video_path) as session:
         environment, proprio, images, video, started = session
         state = full_state(proprio, images, data, encode)
@@ -140,18 +143,25 @@ def _rollout(config, policy, trajectories, encode, initial_state,
         for step in range(warmup_steps):
             policy.action_for(state, previous)
             action = np.clip(warmup_actions[:, step], clip_low, clip_high)
-            proprio, images, _, done, _ = environment.step(action)
-            if done and not success:
+            proprio, images, reward, done, info = environment.step(action)
+            total_reward += float(reward)
+            warmup_completed += 1
+            final_success = bool(info["success"]) if native else bool(done)
+            success_steps += int(final_success)
+            terminated, truncated = bool(info.get("terminated", False)), bool(info.get("truncated", False))
+            if final_success and not success:
                 steps_to_success = 0
-            success |= done
+            success |= final_success
             _append_video(video, images, data["cameras"])
-            previous = action.copy()
+            previous = np.asarray(info.get("applied_action", action)).copy()
             state = full_state(proprio, images, data, encode)
+            if native and done:
+                break
 
         proprio_trace, proposed, executed, mechanism = [proprio.copy()], [], [], {}
         completed = 0
         for step in range(controller_steps):
-            if success and not evaluation["run_full_horizon_after_success"]:
+            if (native and done) or (not native and success and not evaluation["run_full_horizon_after_success"]):
                 break
             action = policy.action_for(state, previous)
             if action.shape != (policy.action_dim,) or not np.isfinite(action).all():
@@ -159,26 +169,32 @@ def _rollout(config, policy, trajectories, encode, initial_state,
             clipped = np.clip(action, clip_low, clip_high)
             if trace_path is not None:
                 proposed.append(action)
-                executed.append(clipped)
                 for key, value in policy.last_trace.items():
                     mechanism.setdefault(key, []).append(value)
 
-            proprio, images, _, done, _ = environment.step(clipped)
+            proprio, images, reward, done, info = environment.step(clipped)
+            applied = np.asarray(info.get("applied_action", clipped))
+            total_reward += float(reward)
+            final_success = bool(info["success"]) if native else bool(done)
+            success_steps += int(final_success)
+            terminated, truncated = bool(info.get("terminated", False)), bool(info.get("truncated", False))
             _append_video(video, images, data["cameras"])
             completed += 1
             if trace_path is not None:
+                executed.append(applied)
                 proprio_trace.append(proprio.copy())
-            previous = {"proposed": action, "executed": clipped}[evaluation.get("action_history", "executed")].copy()
-            if done and not success:
+            previous = {"proposed": action, "executed": applied}[evaluation.get("action_history", "executed")].copy()
+            if final_success and not success:
                 success, steps_to_success = True, step + 1
-            if done and not evaluation["run_full_horizon_after_success"]:
+            if done and (native or not evaluation["run_full_horizon_after_success"]):
                 break
             if step + 1 < controller_steps:
                 state = full_state(proprio, images, data, encode)
         elapsed = time.monotonic() - started
 
-    video_output = _finish_video(video_path, success)
-    if trace_path is not None:
+    reported_success = final_success if native else success
+    video_output = _finish_video(video_path, reported_success)
+    if trace_path is not None and (completed or not native):
         start = warmup_steps - policy.history + 1
         action = (torch.stack(policy._action_history[start:])
                   - policy.action_mean) / policy.action_scale
@@ -187,10 +203,13 @@ def _rollout(config, policy, trajectories, encode, initial_state,
                          action, torch.stack(policy._state_history[start:])], 1).cpu().numpy())
     return {
         "seed": episode_seed,
-        "success": success,
+        "success": reported_success,
+        **({"success_final": final_success, "success_any": success,
+            "success_steps": success_steps, "return": total_reward,
+            "terminated": terminated, "truncated": truncated} if native else {}),
         "steps_to_success": steps_to_success,
         "controller_steps": completed,
-        "warmup_steps": warmup_steps,
+        "warmup_steps": warmup_completed,
         "warmup_demo": warmup_demo,
         "seconds": elapsed,
         "video": str(video_output) if video_output else None,
@@ -536,7 +555,7 @@ def _record_episode(config, run_dir, method, index, row, completed):
     if row["video"]:
         row["video"] = str(Path(row["video"]).relative_to(run_dir))
     row.update(method=method, init_index=index,
-               trace=str(trace.relative_to(run_dir)) if config["evaluation"]["save_compact_trace"] else None)
+               trace=str(trace.relative_to(run_dir)) if config["evaluation"]["save_compact_trace"] and trace.is_file() else None)
     write_json(run_dir / "episodes" / method / f"{index:03d}.json", row)
     completed[index] = row
     present = [value for value in completed.values() if value is not None]

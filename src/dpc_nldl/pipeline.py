@@ -110,8 +110,12 @@ def temporal_method(method):
             or any(not math.isfinite(rate) or rate <= 0 for rate in rates)):
         raise ValueError("g.lookup_rates requires unique positive rates including 1")
     if len(rates) > 1:
+        scaled = g.get("rate_scaled_action_dims", list(range(min(6, method["action_dim"]))))
+        if (not isinstance(scaled, list) or len(set(scaled)) != len(scaled)
+                or any(type(i) is not int or not 0 <= i < method["action_dim"] for i in scaled)):
+            raise ValueError(f"invalid rate_scaled_action_dims: {scaled!r}")
         expected = {"state_offset": 1, "align_history": True, "align_future": True,
-                    "rate_scaled_action_dims": list(range(min(6, method["action_dim"]))),
+                    "rate_scaled_action_dims": scaled,
                     "temporal_support_screen": True}
         residual = method["residual"]
         for section, values in ((g, expected), (residual, {"action_source": "retimed_first"})):
@@ -191,8 +195,8 @@ def _validate_methods(config, method):
     policy = config.get("policy", {}).get("name")
     if policy is not None and policy not in RAW_METHODS:
         raise ValueError(f"unknown policy {policy}")
-    if policy is None and config.get("data", {}).get("encoder", "r3m") != "r3m":
-        raise ValueError("BPC visual encoder must be r3m")
+    if policy is None and config.get("data", {}).get("encoder", "r3m") not in {"r3m", "dp3_pointnet"}:
+        raise ValueError("BPC encoder must be r3m or dp3_pointnet")
     configured = method_variants(config)
     if not configured:
         raise ValueError("methods must be nonempty")
@@ -202,6 +206,9 @@ def _validate_methods(config, method):
     if extra:
         raise ValueError(f"unknown method fields: {sorted(extra)}")
     validate_method_config(config.get("method", {}))
+    if config.get("evaluation", {}).get("benchmark") in {"adroit", "dexart"}:
+        from .dexterous import validate_config
+        validate_config(config)
     target_options = target_execution_options(config.get("method", {}))
     for variant in configured.values():
         if variant["base"] not in RAW_METHODS:
@@ -235,15 +242,15 @@ def task_configs(config, run_dir, selected_benchmark=None):
     """Resolve each configured benchmark task into the existing single-task pipeline."""
     if "benchmarks" not in config:
         evaluation = config["evaluation"]
-        if evaluation.get("benchmark") != "robosuite":
+        if evaluation.get("benchmark") not in {"robosuite", "adroit", "dexart"}:
             raise ValueError(f"unknown benchmark {evaluation.get('benchmark')}")
-        return [(config, Path(run_dir), f"robosuite/{evaluation['task']}")]
+        return [(config, Path(run_dir), f"{evaluation['benchmark']}/{evaluation['task']}")]
     if len({item["kind"] for item in config["benchmarks"]}) != len(config["benchmarks"]):
         raise ValueError("configure each benchmark kind once")
     resolved = []
     for benchmark in config["benchmarks"]:
         kind = benchmark["kind"]
-        if kind != "robosuite":
+        if kind not in {"robosuite", "adroit", "dexart"}:
             raise ValueError(f"unknown benchmark {kind}")
         if selected_benchmark and kind != selected_benchmark:
             continue
@@ -270,6 +277,12 @@ def task_configs(config, run_dir, selected_benchmark=None):
                 if section in scoped:
                     scoped[section] = merge_config(scoped[section], task.get(section, {}))
             scoped["evaluation"].update(benchmark=kind, task=name)
+            if kind in {"adroit", "dexart"}:
+                from .dexterous import configure_task
+                configure_task(scoped, benchmark, task)
+                resolved.append((scoped, Path(run_dir) / "tasks" / kind / name,
+                                 f"{kind}/{name}"))
+                continue
             construction = benchmark.get("construction", "robosuite_action_replay_v1")
             if construction not in ROBOSUITE_CONSTRUCTIONS:
                 raise ValueError(f"unknown {kind} construction {construction}")

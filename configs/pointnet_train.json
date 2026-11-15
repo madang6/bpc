@@ -1,0 +1,26 @@
+{
+  "data": {
+    "hdf5": "/data/adroit/door/capture.hdf5",
+    "suite": "adroit",
+    "task": "door",
+    "source_contract_sha256": "180e3e99c9a3ffce0967657f7c6dbdafc2dbae3b62abfa20387df1ca0db3ec77",
+    "validation_fraction": 0.1,
+    "split_seed": 0
+  },
+  "model": {
+    "state_dim": 24,
+    "action_dim": 28,
+    "num_points": 512
+  },
+  "training": {
+    "seed": 0,
+    "device": "cuda:0",
+    "steps": 2000,
+    "batch_size": 32,
+    "learning_rate": 0.0001,
+    "weight_decay": 1e-06,
+    "log_every": 200,
+    "validation_samples": 512
+  },
+  "output_dir": "/data/adroit/door/encoder_training"
+}

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .io import atomic_path, stage_symlink, write_json
+from .io import atomic_path, sha256 as _sha256, stage_symlink, write_json
 
 
 OPENPI_REVISION = "15a9616a00943ada6c20a0f158e3adb39df2ccac"
@@ -45,6 +45,12 @@ def select_shard(indices, shard):
 
 def _benchmark(config):
     kind = config["evaluation"].get("benchmark")
+    if kind == "adroit":
+        from . import adroit
+        return adroit
+    if kind == "dexart":
+        from . import dexart
+        return dexart
     if kind != "robosuite":
         raise ValueError(f"unsupported benchmark {kind!r}; expected robosuite")
     from . import robosuite
@@ -65,6 +71,8 @@ def demonstration_initializers(config, indices):
 
 def encoder_spec(data):
     name = data.get("encoder", "r3m")
+    if name == "dp3_pointnet":
+        return name, {"feature_dim": 64, **data[name]}
     if name != "r3m":
         raise ValueError(f"unsupported visual encoder {name!r}; expected r3m")
     return name, data["r3m"]
@@ -72,6 +80,9 @@ def encoder_spec(data):
 
 def encoder_identity(data):
     name, spec = encoder_spec(data)
+    if name == "dp3_pointnet":
+        return {"name": name, "feature_dim": 64,
+                "checkpoint_sha256": spec["checkpoint_sha256"]}
     return {"name": name, **{key: spec[key] for key in
             ("model", "feature_dim", "resize")}}
 
@@ -119,6 +130,19 @@ def _bank_shape(trajectories, config):
             "state_dim": state_dim, "action_dim": action_dim}
 
 
+def validate_bank_shape(trajectories, config):
+    """Validate the shared encoded-bank layout against a resolved task recipe."""
+    data = config["data"]
+    shape = _bank_shape(trajectories, data)
+    expected = {"demonstrations": data["demonstrations"],
+                "state_dim": config["method"]["state_dim"],
+                "action_dim": config["method"]["action_dim"]}
+    for key, value in expected.items():
+        if shape[key] != value:
+            raise ValueError(f"bank {key}={shape[key]} but config requires {value}")
+    return shape
+
+
 def make_r3m_encoder(model_name, device, resize, batch_size, *, evaluation=False):
     from r3m import load_r3m
     from .fast_r3m import R3MEncoder
@@ -126,14 +150,6 @@ def make_r3m_encoder(model_name, device, resize, batch_size, *, evaluation=False
     model = load_r3m(model_name).to(device)
     network = nn.Sequential(*model.module.convnet.children())
     return R3MEncoder(network, resize, batch_size, graphs=evaluation)
-
-
-def _sha256(path):
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def _pi05_checkpoint_fingerprint(path):
@@ -153,7 +169,10 @@ def _pi05_checkpoint_fingerprint(path):
 def make_encoder(data, *, evaluation=False):
     if not data["feature_keys"]:
         return None
-    _, spec = encoder_spec(data)
+    name, spec = encoder_spec(data)
+    if name == "dp3_pointnet":
+        from .dexterous import PointEncoder
+        return PointEncoder(data)
     batch_size = int(spec["batch_size"])
     if evaluation:
         batch_size = min(batch_size, len(data["cameras"]))
@@ -276,6 +295,9 @@ def _representation_check(config, trajectories):
 def prepare(config, run_dir, shard=None):
     """Generate shard parts or expose one complete cached bank."""
     data = config["data"]
+    if config["evaluation"].get("benchmark") in {"adroit", "dexart"}:
+        from .dexterous import prepare_bank
+        return prepare_bank(config, run_dir, shard)
     source = Path(data["bank"] if "bank" in data else data["reuse_bank"])
     if shard:
         if not source.is_file():
@@ -292,15 +314,16 @@ def prepare(config, run_dir, shard=None):
         _benchmark(config).prepare_reset_catalog(config)
 
     trajectories, metadata = load_bank(source, data)
-    shape = _bank_shape(trajectories, data)
-    expected = {"demonstrations": data["demonstrations"],
-                "state_dim": config["method"]["state_dim"],
-                "action_dim": config["method"]["action_dim"]}
-    for key, value in expected.items():
-        if shape[key] != value:
-            raise ValueError(f"bank {key}={shape[key]} but config requires {value}")
+    shape = validate_bank_shape(trajectories, config)
     check = (_representation_check(config, trajectories)
              if data.get("construction", "").endswith(GENERATED_BANK_SUFFIXES) else {})
+    return stage_bank(config, run_dir, source, shape, metadata, reused, check)
+
+
+def stage_bank(config, run_dir, source, shape, metadata, reused, check=None, extra=None):
+    """Publish one validated bank using the shared data-stage manifest contract."""
+    data = config["data"]
+    check = check or {}
     run_dir = Path(run_dir)
     write_json(run_dir / "data.json", {
         "bank": str(source.resolve()), "raw_hdf5": data["raw_hdf5"],
@@ -311,7 +334,7 @@ def prepare(config, run_dir, shard=None):
         "state_layout": [data["state_key"], *data["feature_keys"]],
         "action_layout": data["action_key"], "encoder": metadata.get("encoder"),
         "render_convention": metadata.get("render_convention"),
-        "representation_check": check,
+        "representation_check": check, **(extra or {}),
     })
     if check and check["max_floored_abs_z"] > 1:
         raise RuntimeError(f"native bank/live representation mismatch: {check}")

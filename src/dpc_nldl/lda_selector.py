@@ -118,7 +118,11 @@ class Selector:
             torch.cuda.reset_peak_memory_stats(p.device)
         generator = torch.Generator(device=p.device).manual_seed(int(c['seed']))
         columns = torch.arange(len(p.hankel_starts), device=p.device)
-        anchors = columns[torch.randperm(len(columns), device=p.device, generator=generator)[:int(c['anchors'])]]
+        holdout = c.get('calibration_holdout', 0)
+        if type(holdout) is not int or holdout < 0 or holdout >= len(columns):
+            raise ValueError(f'invalid calibration_holdout={holdout!r} for {len(columns)} windows')
+        anchor_count = min(int(c['anchors']), len(columns) - holdout)
+        anchors = columns[torch.randperm(len(columns), device=p.device, generator=generator)[:anchor_count]]
         history = p._past_columns(anchors)
         distance = torch.pdist(history[:512].float())
         positive = distance[distance > 0]
@@ -126,58 +130,50 @@ class Selector:
         width = int(c['features'])
         self.omega = torch.randn(history.shape[1], width, device=p.device, generator=generator)/sigma
         self.phase = torch.rand(width, device=p.device, generator=generator)*math.tau
-        full = bool(c.get('fit_all_histories', False))
-        if full:
-            from .full_fisher import fit_all_histories
-            fitted = fit_all_histories(p)
-            fitted.update(teacher_storage='sparse_host', teacher_kind='sparsemax', teacher_distance_scale='radius')
-        else:
-            future = p._action_neighborhood_features()
-            _, near_distance = p._metric_topk(anchors, columns, future,
-                min(4*p.g_supports, len(columns)-1), 32)
-            radius = near_distance[:, -1].double().clamp_min(1e-12)
-            future = future.double()
-            targets = (torch.empty((len(anchors), len(columns)), dtype=torch.float64, device='cpu')
-                       if teacher_storage == 'host' else [])
-            support_min, support_max, support_sum = len(columns), 0, 0
-            for offset, batch in enumerate(anchors.split(32)):
-                sl = slice(offset*32, offset*32+len(batch))
-                distance = torch.cdist(future[batch], future).square()
-                overlap = ((p.hankel_trajectory[batch, None] == p.hankel_trajectory[None])
-                    & ((p.hankel_starts[batch, None]-p.hankel_starts[None]).abs() < p.history+p.horizon))
-                logits = -distance/radius[sl, None]
-                distribution = sparsemax(logits.masked_fill(overlap, -torch.inf))
-                positive = (distribution > 0).sum(1)
-                support_min = min(support_min, int(positive.min()))
-                support_max = max(support_max, int(positive.max()))
-                support_sum += int(positive.sum())
-                if teacher_storage == 'host':
-                    targets[sl].copy_(distribution.cpu())
-                else:
-                    targets.append(distribution)
-            if teacher_storage == 'device':
-                targets = torch.cat(targets)
-            fitted = fit_discriminant(self.features(history), targets, float(c['shrinkage']), fisher_rank=c['fisher_rank'])
-            fitted['teacher_storage'] = teacher_storage
-            fitted['teacher_kind'] = 'sparsemax'
-            fitted['teacher_distance_scale'] = 'radius'
-            fitted['teacher_positive_support'] = dict(minimum=support_min,
-                mean=support_sum/len(anchors), maximum=support_max)
-        p.g_lookup_matrix = fitted.pop('transform').to(device=p.device, dtype=p.dtype)
+        future = p._action_neighborhood_features()
+        _, near_distance = p._metric_topk(anchors, columns, future,
+            min(4*p.g_supports, len(columns)-1), 32)
+        radius = near_distance[:, -1].double().clamp_min(1e-12)
+        future = future.double()
+        targets = (torch.empty((len(anchors), len(columns)), dtype=torch.float64, device='cpu')
+                   if teacher_storage == 'host' else [])
+        support_min, support_max, support_sum = len(columns), 0, 0
+        for offset, batch in enumerate(anchors.split(32)):
+            sl = slice(offset*32, offset*32+len(batch))
+            distance = torch.cdist(future[batch], future).square()
+            overlap = ((p.hankel_trajectory[batch, None] == p.hankel_trajectory[None])
+                & ((p.hankel_starts[batch, None]-p.hankel_starts[None]).abs() < p.history+p.horizon))
+            logits = -distance/radius[sl, None]
+            distribution = sparsemax(logits.masked_fill(overlap, -torch.inf))
+            positive = (distribution > 0).sum(1)
+            support_min = min(support_min, int(positive.min()))
+            support_max = max(support_max, int(positive.max()))
+            support_sum += int(positive.sum())
+            if teacher_storage == 'host':
+                targets[sl].copy_(distribution.cpu())
+            else:
+                targets.append(distribution)
+        if teacher_storage == 'device':
+            targets = torch.cat(targets)
+        fitted = fit_discriminant(self.features(history), targets, float(c['shrinkage']), fisher_rank=c['fisher_rank'])
+        fitted['teacher_storage'] = teacher_storage
+        fitted['teacher_kind'] = 'sparsemax'
+        fitted['teacher_distance_scale'] = 'radius'
+        fitted['teacher_positive_support'] = dict(minimum=support_min,
+            mean=support_sum/len(anchors), maximum=support_max)
+        p.g_lookup_matrix = fitted.pop('transform').to(p.dtype)
         p.g_lookup_scale = 1.
         self.payload = dict(version=1, **{name: getattr(self, name).cpu()
             for name in self.fields}, config=c, diagnostics=fitted)
         self.payload['support_scale'] = 1.
-        if not full:
-            del targets, future
-        del history
+        del targets, history, future
         p._project_hankel()
         fitted.update(self._calibrate_support(len(anchors)))
         print(f'[fit] LDA {fitted}', flush=True)
         memory = (dict(peak_allocated_bytes=torch.cuda.max_memory_allocated(p.device),
                        peak_reserved_bytes=torch.cuda.max_memory_reserved(p.device))
                   if torch.device(p.device).type == 'cuda' else {})
-        return dict(name='lda', seconds=time.perf_counter()-started, anchors=len(columns) if full else len(anchors), **fitted, **memory)
+        return dict(name='lda', seconds=time.perf_counter()-started, anchors=len(anchors), **fitted, **memory)
 
     def _calibrate_support(self, fitted_count):
         p = self.policy

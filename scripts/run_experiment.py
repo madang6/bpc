@@ -156,8 +156,6 @@ def host(args, inside_command=None):
     if fit_cache and cache_dir:
         Path(fit_cache).mkdir(parents=True, exist_ok=True)
         command += ["-v", f"{fit_cache}:{cache_dir}"]
-    if cache_dir and any(scoped.get("method", {}).get("g", {}).get("lda", {}).get("fit_all_histories", False) for scoped, _, _ in jobs):
-        command += ["-e", f"TMPDIR={cache_dir}"]
     if any(scoped.get("policy", {}).get("name") != "pi05_lora"
            and scoped["data"]["feature_keys"] for scoped, _, _ in jobs):
         command += ["-v", f"{r3m_cache}:/tmp/.r3m:ro"]

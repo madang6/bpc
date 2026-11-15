@@ -10,7 +10,7 @@ python scripts/run_tests.py                 # all groups; CUDA skips on CPU
 python scripts/run_tests.py --list          # group and name of every case
 ```
 
-The groups are disjoint: 213 unit, 72 integration, and 89 CUDA cases. They all
+The groups are disjoint: 222 unit, 76 integration, and 89 CUDA cases. They all
 use standard `unittest`; ordinary discovery remains supported with
 `PYTHONPATH=src:scripts python -m unittest discover -s tests`.
 
@@ -51,3 +51,7 @@ Tests exclusive to the removed encoders, frozen π₀.₅ experiment, and unused
 density-search path are retired too. Parameterized boundary checks reject
 retired options before worker launch; retained tests cover the shared numerical
 helpers, mixed/fused search, and fine-tuned π₀.₅ comparator.
+
+Native-suite tests cover all eight task configs, native success versus termination,
+small CPU sparsemax-Fisher fits, and the auxiliary PointNet-to-bank path. These
+use synthetic fixtures and simulator doubles, not native rollout success trials.

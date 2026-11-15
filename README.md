@@ -32,7 +32,9 @@ scripts/build_robosuite_runtime.sh
 python3 scripts/run_experiment.py configs/robosuite_fisher_sparsemax_local.json --detach
 ```
 
-The shared template is not an entrypoint. Its objects merge recursively into
+RoboSuite and dexterous suite templates inherit policy defaults from
+[`configs/bpc_common.json`](configs/bpc_common.json). These templates are not
+entrypoints. Their objects merge recursively into
 each configuration; lists and scalars replace inherited values. Every run
 records the fully resolved configuration, so resuming does not depend on later
 changes to the template.
@@ -57,7 +59,7 @@ comparator; it does not add BPC model choices.
 ## Retained behavior
 
 The headline uses 1,000 demonstrations per task, 16,384 retrieval RFFs, up to
-all eligible fitting histories, rank-70 Fisher projection, and an independent 16,384-RFF
+8,192 fitting anchors, rank-70 Fisher projection, and an independent 16,384-RFF
 correction. It evaluates seeds 100000–100299 on eight tasks. Square uses five
 history/warmup steps; the other tasks use ten. Warmup plus control spans 600
 steps. The seven-dimensional action retains the binary gripper command.
@@ -73,15 +75,14 @@ The tested recipe's additional active mechanisms remain enabled:
 - Temporal rates `[0.5, 0.75, 1, 1.5, 2]`, aligned histories/futures, and scaling
   of the first six action coordinates. The gripper is unchanged, and residual
   targets use the same retimed first action.
-- Legacy opt-in empty-grasp recovery (disabled in the default Fisher config), calibrated from demonstrations: 12 closed-command
+- Empty-grasp recovery, calibrated from demonstrations: 12 closed-command
   settling steps, up to 40 steps retrieving opening continuations, 5% demo tabu,
   and at most three attempts per episode.
 - Teacher-coverage calibration, mixed retrieval with refinement/fallback,
   batched target generation, host-paged RFFs, and bounded concurrent readouts.
 
-The manuscript does not currently describe temporal retiming. Recovery is disabled
-in the default Fisher recipe. See [the recovery-free update](docs/recovery_free_default.md)
-for the full-data fit, matched evidence, and remaining execution mechanisms.
+The manuscript does not currently describe retiming or empty-grasp recovery;
+they are retained deliberately as part of the tested recipe.
 
 NHC and NNC retain the headline's retrieval and temporal settings. NLR uses
 native timing because raw history-distance retrieval has no learned temporal
@@ -94,8 +95,10 @@ surface: Adam neighborhood fitting, sparsemax-QP, prototype LDA, alternative
 teachers, SPC refinement, expert fusion, neural residuals, TSVD reconstruction,
 previous-plan penalties, and separate temporal residual retrieval.
 
-The experiment surface is RoboSuite with R3M features for BPC and the separate
-fine-tuned π₀.₅ comparator. LIBERO/RoboCasa adapters, SDP/π₀.₅ BPC encoders,
+The experiment surface includes RoboSuite with R3M features, native Adroit and
+DexArt with a frozen PointNet encoder, and the separate fine-tuned π₀.₅ comparator.
+See [dexterous setup and historical results](docs/dexterous.md) for the native
+suite configurations and input requirements. LIBERO/RoboCasa adapters, SDP/π₀.₅ BPC encoders,
 the frozen calibrated π₀.₅ experiment, and the unused `CertifiedDensitySearch`
 path are removed, together with their exclusive configuration, documentation,
 and tests. Retired configuration choices fail validation before workers launch.

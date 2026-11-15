@@ -1,0 +1,52 @@
+{
+  "extends": "dexterous_common.json",
+  "experiment": {
+    "name": "adroit-pointnet-fisher"
+  },
+  "data": {
+    "demonstrations": 10
+  },
+  "benchmarks": [
+    {
+      "kind": "adroit",
+      "dataset_dir": "/data/adroit",
+      "tasks": [
+        {
+          "name": "door",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "d68bd1428090e47925b0cd3d5b54f796f6fd40e89da86794980d829e67fc7302"
+            }
+          }
+        },
+        {
+          "name": "hammer",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "2a9a3c6517af8ff725d0cfee42444ecb1e034781cf30f8fe2cf7672b7dc0a1d6"
+            }
+          }
+        },
+        {
+          "name": "pen",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "c12a7cf5ec281fd8026a88049fd7111ecbfea36e5744b34d9be693762821b180"
+            }
+          }
+        },
+        {
+          "name": "relocate",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "24e68d9c3981d291a4e7bd1b1ed04590e39e8e3e16a199d63f2eed30e1b80a0a"
+            },
+            "dp3_adroit": {
+              "allow_relocate_extension": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
