@@ -1,0 +1,16 @@
+{
+  "extends": "robosuite_common.json",
+  "methods": {
+    "bpc_fisher": {
+      "base": "bpc",
+      "g_lookup": "lda",
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "bpc_fisher"
+  },
+  "experiment": {
+    "fit_cache_name": "fisher-radius-sparsemax-full-standard-v1"
+  }
+}

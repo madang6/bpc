@@ -1,0 +1,67 @@
+{
+  "extends": "bpc_common.json",
+  "experiment": {
+    "name": "dexterous-pointnet-fisher",
+    "output_dir": "/data/bpc/runs",
+    "cache_dir": "/data/bpc/cache"
+  },
+  "runtime": {
+    "native_python": "python",
+    "timezone": "UTC",
+    "readonly_data_root": "/data",
+    "gpu_memory_fraction": 0.85,
+    "gpus": "all",
+    "native_coordinator": true,
+    "native_env": {
+      "MUJOCO_GL": "egl"
+    }
+  },
+  "data": {
+    "realization_seed": 0,
+    "state_key": "Xro",
+    "action_key": "Uro",
+    "feature_keys": [
+      "dp3_pointnet"
+    ],
+    "cameras": [
+      "point_cloud"
+    ],
+    "encoder": "dp3_pointnet",
+    "image_size": 84,
+    "dp3_pointnet": {
+      "device": "cuda",
+      "batch_size": 1
+    }
+  },
+  "method": {
+    "g": {
+      "lda": {
+        "calibration_holdout": 64
+      }
+    }
+  },
+  "methods": {
+    "bpc_fisher": {
+      "base": "bpc",
+      "g_lookup": "lda"
+    }
+  },
+  "evaluation": {
+    "init_index_start": 0,
+    "init_index_stop": 30,
+    "episode_seed": 950000,
+    "warmup_steps": 10,
+    "run_full_horizon_after_success": false,
+    "action_clip": [
+      -1,
+      1
+    ],
+    "action_history": "executed",
+    "save_compact_trace": true,
+    "env_workers": 1
+  },
+  "analysis": {
+    "confidence": 0.95,
+    "reference_method": "bpc_fisher"
+  }
+}

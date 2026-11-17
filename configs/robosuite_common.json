@@ -1,0 +1,141 @@
+{
+  "extends": "bpc_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__fisher-radius-sparsemax-r3m",
+    "output_dir": "/data/bpc/runs",
+    "cache_dir": "/data/bpc/cache",
+    "fit_cache_name": "fisher-radius-sparsemax-v1"
+  },
+  "runtime": {
+    "image": "bpc-robosuite:latest",
+    "gpus": "all",
+    "data_workers": [
+      "local=0"
+    ],
+    "fit_workers": [
+      "local=0"
+    ],
+    "workers": [
+      "local=0"
+    ],
+    "shm_size": "8g",
+    "mujoco_gl": "egl",
+    "timezone": "America/Los_Angeles",
+    "readonly_data_root": "/data"
+  },
+  "benchmarks": [
+    {
+      "kind": "robosuite",
+      "construction": "robosuite_recorded_state_rerender_v1",
+      "dataset_dir": "/data/robosuite",
+      "bank_dir": "/data/bpc/banks/robosuite",
+      "tasks": [
+        {
+          "name": "square_d0",
+          "method": {
+            "history": 5
+          },
+          "evaluation": {
+            "warmup_steps": 5,
+            "controller_steps": 595
+          }
+        },
+        "stack_d0",
+        "threading_d0",
+        {
+          "name": "coffee_d0",
+          "evaluation": {
+            "env_workers": 32
+          }
+        },
+        {
+          "name": "hammer_cleanup_d0",
+          "evaluation": {
+            "env_workers": 32
+          }
+        },
+        {
+          "name": "mug_cleanup_d0",
+          "evaluation": {
+            "env_workers": 32
+          }
+        },
+        {
+          "name": "nut_assembly_d0",
+          "evaluation": {
+            "env_workers": 32
+          }
+        },
+        {
+          "name": "stack_three_d0",
+          "evaluation": {
+            "env_workers": 32
+          }
+        }
+      ]
+    }
+  ],
+  "data": {
+    "realization_seed": 0,
+    "demonstrations": 1000,
+    "state_key": "Xro",
+    "action_key": "Uro",
+    "feature_keys": [
+      "r3m_agent",
+      "r3m_wrist"
+    ],
+    "cameras": [
+      "agentview_rgb",
+      "eye_in_hand_rgb"
+    ],
+    "image_size": 224,
+    "r3m": {
+      "model": "resnet18",
+      "feature_dim": 512,
+      "resize": 224,
+      "batch_size": 512,
+      "device": "cuda"
+    }
+  },
+  "method": {
+    "state_dim": 1033,
+    "action_dim": 7,
+    "g": {
+      "rate_scaled_action_dims": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "lda": {
+        "fit_all_histories": true
+      }
+    },
+    "residual": {
+      "target_retrieval_precision": "mixed",
+      "target_execution": "batched"
+    }
+  },
+  "analysis": {
+    "confidence": 0.95
+  },
+  "evaluation": {
+    "reset_protocol": "independent_seed",
+    "init_index_start": 0,
+    "init_index_stop": 300,
+    "episode_seed": 5140000,
+    "warmup_steps": 10,
+    "controller_steps": 590,
+    "run_full_horizon_after_success": false,
+    "action_clip": [
+      -1.0,
+      1.0
+    ],
+    "action_history": "executed",
+    "save_compact_trace": false,
+    "env_workers": 48,
+    "readout_rows": 48
+  }
+}

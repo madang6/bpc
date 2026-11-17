@@ -1,0 +1,17 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__nnc-r3m",
+    "fit_cache_name": "nnc-full-standard-v2"
+  },
+  "methods": {
+    "bpc_nnc": {
+      "base": "bpc_nnc",
+      "g_lookup": "lda",
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "bpc_nnc"
+  }
+}

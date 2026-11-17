@@ -1,0 +1,18 @@
+{
+  "extends": "robosuite_common.json",
+  "experiment": {
+    "name": "robosuite-eight-task__nhc-r3m",
+    "fit_cache_name": "nhc-full-standard-v2"
+  },
+  "methods": {
+    "bpc_nhc": {
+      "base": "bpc",
+      "g_lookup": "lda",
+      "g_weights": "uniform",
+      "retrieval_precision": "mixed"
+    }
+  },
+  "analysis": {
+    "reference_method": "bpc_nhc"
+  }
+}

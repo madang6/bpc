@@ -1,0 +1,45 @@
+{
+  "extends": "dexterous_common.json",
+  "experiment": {
+    "name": "dexart-pointnet-fisher"
+  },
+  "data": {
+    "demonstrations": 100,
+    "dexart_root": "/data/third_party/dexart-release"
+  },
+  "benchmarks": [
+    {
+      "kind": "dexart",
+      "dataset_dir": "/data/dexart",
+      "tasks": [
+        {
+          "name": "toilet",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "683febda573ffea0a3c43bdfcc6be70ba63fd4eaea9d125afa3e28cc96bc8865"
+            }
+          }
+        },
+        {
+          "name": "faucet",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "eeccd486d0f45798d9b15092e3ee36ebc27326b378d45a8114053088bebc85ad"
+            }
+          }
+        },
+        {
+          "name": "laptop",
+          "data": {
+            "dp3_pointnet": {
+              "checkpoint_sha256": "9a86273edfe3e7d8d75d9c9cdc502e68e78bb8143ba1fdc22115a41cad089def"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "evaluation": {
+    "instance_split": "seen"
+  }
+}
